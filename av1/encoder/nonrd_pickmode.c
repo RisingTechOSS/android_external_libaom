@@ -3037,11 +3037,14 @@ static void set_color_sensitivity(AV1_COMP *cpi, MACROBLOCK *x,
                                   struct buf_2d yv12_mb[MAX_MB_PLANE]) {
   const int subsampling_x = cpi->common.seq_params->subsampling_x;
   const int subsampling_y = cpi->common.seq_params->subsampling_y;
-  int factor = (bsize >= BLOCK_32X32) ? 2 : 3;
+  const int source_sad_nonrd = x->content_state_sb.source_sad_nonrd;
   int shift = 3;
+  if (source_sad_nonrd >= kMedSad &&
+      cpi->oxcf.tune_cfg.content != AOM_CONTENT_SCREEN &&
+      cpi->common.width * cpi->common.height >= 640 * 360)
+    shift = 4;
   if (cpi->oxcf.tune_cfg.content == AOM_CONTENT_SCREEN &&
       cpi->rc.high_source_sad) {
-    factor = 1;
     shift = 6;
   }
   NOISE_LEVEL noise_level = kLow;
@@ -3073,7 +3076,7 @@ static void set_color_sensitivity(AV1_COMP *cpi, MACROBLOCK *x,
       const int norm_uv_sad =
           uv_sad >> (b_width_log2_lookup[bs] + b_height_log2_lookup[bs]);
       x->color_sensitivity[i - 1] =
-          uv_sad > (factor * (y_sad >> shift)) && norm_uv_sad > 40;
+          uv_sad > (y_sad >> shift) && norm_uv_sad > 40;
       if (source_variance < 50 && norm_uv_sad > 100)
         x->color_sensitivity[i - 1] = 1;
     }
